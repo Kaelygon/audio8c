@@ -14,7 +14,7 @@ using namespace std;
 const uint8_t sets = 32; //Count of integer arrays
 const uint8_t steps = pow(2,8)-1; //bit depth
 const uint16_t samplehz = pow(2,16)-1; //sampling rate
-const uint8_t cnlcount = 4; //channel count, 1-mono, 2-stereo etc
+const uint8_t cnlcount = 2; //channel count, 1-mono, 2-stereo etc
 const char fileName[] = "audio";
 const char rawFormat[] = "pcm";
 const char encFormat[] = "aiff";

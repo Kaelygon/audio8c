@@ -65,7 +65,7 @@ class Intset {
 		reserve();
 		
 		for(int a=0;a<scnt;a++){
-			s[a]=buffer[a];	
+			this->s[a]=buffer[a];	
 		}
 
 		delete[] buffer;
@@ -110,16 +110,42 @@ class Intcol : public Intset {
 //Functions for "internal integer sets" - return nothing
 	//average of samples
 	void mixWave(uint8_t st, uint8_t nd){ 
-		uint lena = set[nd].scnt;
+		uint stlen = set[st].scnt;
+		uint ndlen = set[nd].scnt;
+
+		uint lena = ndlen;
 		
-		if(set[st].scnt>set[nd].scnt){
-			lena=set[st].scnt;
+		if(stlen>ndlen){
+			lena=stlen;
 		}
 
-		for(uint a=0;a<lena;a+=1){
-			set[st].scnt = set[st].scnt/2+set[nd].scnt/2;
+		uint8_t* buffer=new uint8_t[ (uint)ceil( lena*1.0625 ) ];
+
+		int i=0; //avg to buffer
+		while(i<=lena){
+			if(i>stlen){
+				buffer[i]=set[nd].s[i];
+			}else if(i>ndlen){
+				buffer[i]=set[st].s[i];
+			}else{
+				buffer[i]=set[st].s[i]/2+set[nd].s[i]/2;
+			}
+			i++;
 		}
+
+		set[st].free(); //clear st and allocate lena size 
+		set[st].scnt=lena;
+		set[st].reserve();
+
+		i=0;
+		while(i<=lena){ //buffer to st
+			set[st].s[i]=buffer[i];
+			i++;
+		}
+
+		delete[] buffer;		
 	}
+	
 	//add together samples
 	void addWave(uint8_t st, uint8_t nd){ 
 		uint lena = set[nd].scnt;
@@ -129,7 +155,7 @@ class Intcol : public Intset {
 		}
 
 		for(uint a=0;a<lena;a+=1){
-			set[st].scnt = set[st].scnt+set[nd].scnt;
+			set[st].s[a] = set[st].s[a]+set[nd].s[a];
 		}
 	}
 	//add together samples
@@ -205,67 +231,6 @@ class Intcol : public Intset {
 		return fbuf;
 	}
 
-/*	All of these can be done with "internal integer sets" functions
-	Intset mixWave(Intset st, Intset nd){ //average of samples	
-		fbuf.scnt=st.scnt;
-		fbuf.reserve();
-		int lena=st.scnt;
 
-		for(uint a=0;a<lena;a+=1){
-			fbuf.s[a] = st.s[a]/2+nd.s[a]/2;
-		}
-		return fbuf;
-	}
-
-	Intset addWave(Intset st, Intset nd){ //add together samples
-		fbuf.scnt=st.scnt;
-		fbuf.reserve();
-		int lena=st.scnt;
-
-		for(uint a=0;a<lena;a+=1){
-			fbuf.s[a] = st.s[a]+nd.s[a];
-		}
-		return fbuf;
-	}
-
-	Intset modWave(Intset st, Intset nd){ //modulate wave
-		fbuf.scnt=st.scnt;
-		fbuf.reserve();
-		int lena=st.scnt;
-
-		double max = steps;
-		double min = 0;
-		for(uint a=0;a<lena;a+=1){
-			double multi = (nd.s[a]-min)/(max-min) ;
-			fbuf.s[a] = st.s[a]*multi+min;
-		}
-		return fbuf;
-	}
-
-	Intset macp( Intset st, Intset dest ){  //copy
-		dest.free();
-		dest.scnt=st.scnt;
-		dest.reserve();
-
-
-		for(uint a=0;a<dest.scnt;a+=1){
-			dest.s[a] = st.s[a];
-		}
-			
-		return dest;
-	}
-
-	Intset macon( Intset st, Intset nd ){  //concat
-		uint stlen = st.scnt;
-		uint ndlen = nd.scnt;
-
-		int i=1;
-		while(i<=ndlen){
-			st.s[stlen+i]=nd.s[i];
-			i++;
-		}
-		return st;
-	}
-*/
 
 };

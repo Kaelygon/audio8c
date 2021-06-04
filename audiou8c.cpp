@@ -14,7 +14,7 @@ using namespace std;
 const uint8_t sets = 32; //Count of integer arrays
 const uint8_t steps = pow(2,8)-1; //bit depth
 const uint16_t samplehz = pow(2,16)-1; //sampling rate
-const uint8_t cnlcount = 2; //channel count, 1-mono, 2-stereo etc
+const uint8_t cnlcount = 4; //channel count, 1-mono, 2-stereo etc
 const char fileName[] = "audio";
 const char rawFormat[] = "pcm";
 const char encFormat[] = "aiff";
@@ -80,55 +80,133 @@ void rst(string file){
 
 
 //Single sample functions
-uint8_t sine(double t, uint wl, uint h){ //Sinusoidal waveform
+//Sinusoidal waveform
+uint8_t sine(double t, int wl, uint h){ 
 	return (sin(2*3.14159265*t/wl)+1)/2*h;
 }
-
-uint8_t triangle(double t, uint8_t wl, uint8_t h){ //Triangular waveform
+//Triangular waveform
+uint8_t triangle(double t, uint8_t wl, uint8_t h){ 
 	t+=3*wl/4;
 	return 2*abs( ((t/wl - floor(t/wl)))-0.5 )*h;
 }
-
-uint8_t saw(double t, uint wl, uint h){ //Ramp waveform
+//Ramp waveform
+uint8_t saw(double t, int wl, uint h){ 
 	t+=wl/2;
 	return qmod(t/wl,1)*h;
 }
-
-uint8_t square(double t, uint wl, uint h){ //Square waveform
+//Square waveform
+uint8_t square(double t, int wl, uint h){ 
 	return floor( 2*((t/wl - floor(t/wl)) ) )*h;
 }
 
-//generate sound
-void a( void ){
+//BOF b();
+void b( void ){
 
-	uint samples = 1024*64;
-	int bufs = 6; //count of channel allocations
+	uint samples = 1024*2048;
+	int bufs = 8; //count of channel allocations
+
 	for(int i=0;i<bufs;i++){ //allocate channels
 		coia.set[i].scnt = samples;
 		coia.set[i].reserve();
 	}
 	
-	for(int b=0;b<samples;b+=1){
-		uint l=255;//wave length
-		uint h=255;//amplitude
+	double x=0;
+	double m=1;
 
-		coia.set[0].s[b]=rand()%255; //some randomness
-		coia.set[1].s[b]=sine(1.25*b,l,h);
-		coia.set[2].s[b]=square(1.5*b,l,h);
-		coia.set[3].s[b]=triangle(2.0*b,l,h);
+	double g=0.13;
+	double d=7.6;
+
+	coia.set[16].scnt = samples;
+	coia.set[16].reserve();
+
+	//random chords
+	int z=0;
+	double zm=1;
+	int al=0;
+	int bl=0;
+	int lct=0;
+	for(int b=0;b<samples;b+=1){
+		uint h=255;//amplitude
+		uint l=255*2;//wave length
+
+		if(b%24==0){
+			x=sine(z,l+al*32-bl*32,100)+sine(z,l*0.5+al*32-bl*32,55);
+		}
+		if(b%(1024*8)==0){
+			al=rand()%7+rand()%7;
+			bl=rand()%5+rand()%5;
+		}		
+
+		if(  b%(1024*(32+al))	<	1024*(16+bl)	){
+			coia.set[16].s[b]=x;
+		}else{
+			int mx=al*8-bl*8+1;
+			coia.set[16].s[b]=rand()%( mx )+127-mx/2 ;
+		}
+		z+=zm;
+
+	}
+	
+	//base
+	samples=1024*32;
+	coia.set[29].scnt = samples;
+	coia.set[29].reserve();
+	x=samples;
+	z=1;
+	for(int b=samples;b>0;b-=1){
+		uint h=255;
+		uint l=255*3;
+	
+		coia.set[29].s[b]=sine(b, l * ( 0.25+0.75 * ( b*(3.0/2.0) )/samples ) ,h);
+
+		if(b>1024*24){
+			coia.set[29].s[b]=0;
+		}
 
 	}
 
-	coia.set[0].loopWave(2); //loop set 0 twice
-	coia.set[0].invy(); //invert waveform
-	coia.macon(0,1); //concatenate 1 at the end of 0
-	coia.mixWave(3,0); //average sets 3 and 0
-	coia.modWave(1,2); //multiply set 1 by set 2
-	coia.set[0].invx(); //reverse track
-	coia.mixWave(2,3); //average sets 2 and 3 
-	coia.macp(0,1); //copy set 0 to 1 
+	//hithat
+	samples=1024*16;
+	coia.set[28].scnt = samples;
+	coia.set[28].reserve();
+	for(int b=samples;b>0;b-=1){
+		x=b;
+	
+		coia.set[28].s[b]= rand()%127+64;
 
-}
+		if(
+			b>1024*2 && 
+			b<1024*8 ||
+			b>1024*10 && 
+			b<1024*16 
+		){
+			coia.set[28].s[b]=127;
+		}
+
+	}
+
+
+
+	coia.set[29].loopWave(70);
+	coia.set[28].loopWave(120);
+
+	coia.modWave(0,1);
+	
+	coia.macp(0,30);
+	coia.set[30].invy();
+	coia.modWave(2,30);
+
+	coia.mixWave(0,2);
+	
+	coia.macp(16,0);
+	coia.macp(16,1);
+	
+	coia.mixWave(29,28);
+
+	coia.macp(29,2);
+	coia.macp(29,3);
+
+}//EOF b();
 
 int main(){
 	
@@ -137,7 +215,7 @@ int main(){
 	rst(fileName);
 
 	//sound function
-	a();
+	b();
 	
 	//write channels to a file
 	write(fileName, coia.mixChannels() );
